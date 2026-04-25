@@ -4,33 +4,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="A sleek, real-time chat application with secure authentication.">
     <title>Realtime Chat</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💬</text></svg>">
 </head>
 
 <body>
 
     <!-- LOGIN SECTION -->
     <div id="login-container" class="container">
-        <h2>Chat Login</h2>
-        <input type="email" id="email" placeholder="Email">
-        <input type="password" id="password" placeholder="Password">
+        <div class="brand-icon">💬</div>
+        <h2>Welcome back</h2>
+        <p class="subtitle">Sign in to continue chatting</p>
+        <input type="email" id="email" placeholder="Email address" autocomplete="email">
+        <input type="password" id="password" placeholder="Password" autocomplete="current-password">
         <div class="btn-group">
-            <button id="login-btn">Login</button>
-            <button id="signup-btn" class="secondary">Sign Up</button>
+            <button id="login-btn">Sign In</button>
+            <button id="signup-btn" class="secondary">Create Account</button>
         </div>
     </div>
 
     <!-- CHAT SECTION (Hidden by default) -->
     <div id="chat-container" class="container hidden">
         <div class="chat-header">
-            <span>Global Chat</span>
+            <span><span class="status-dot"></span> Global Chat</span>
             <button id="logout-btn">Logout</button>
         </div>
         <div id="messages"></div>
         <form id="chat-form">
             <input type="text" id="msg-input" placeholder="Type a message..." autocomplete="off">
-            <button type="submit">Send</button>
+            <button type="submit" aria-label="Send message">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+            </button>
         </form>
     </div>
 
@@ -80,12 +89,15 @@
         document.getElementById('logout-btn').onclick = () => signOut(auth);
 
         // Monitor Auth State (Are we logged in or not?)
+        let currentUserEmail = '';
         onAuthStateChanged(auth, (user) => {
             if (user) {
+                currentUserEmail = user.email;
                 loginContainer.classList.add('hidden');
                 chatContainer.classList.remove('hidden');
                 loadMessages();
             } else {
+                currentUserEmail = '';
                 loginContainer.classList.remove('hidden');
                 chatContainer.classList.add('hidden');
             }
@@ -102,14 +114,40 @@
                 // Reverse because we queried "desc"
                 const msgs = snapshot.docs.map(doc => doc.data()).reverse();
 
+                if (msgs.length === 0) {
+                    messagesDiv.innerHTML = `
+                        <div class="empty-state">
+                            <span class="empty-icon">💬</span>
+                            <span>No messages yet. Say hi!</span>
+                        </div>
+                    `;
+                    return;
+                }
+
                 msgs.forEach(msg => {
                     const div = document.createElement('div');
                     div.classList.add('msg');
-                    div.innerHTML = `<b>${msg.user}</b>: ${msg.text}`;
+
+                    const isSelf = msg.user === currentUserEmail;
+                    div.classList.add(isSelf ? 'msg-self' : 'msg-other');
+
+                    const authorName = msg.user ? msg.user.split('@')[0] : 'anon';
+
+                    div.innerHTML = `
+                        <span class="msg-author">${isSelf ? 'You' : authorName}</span>
+                        <span class="msg-text">${escapeHtml(msg.text)}</span>
+                    `;
                     messagesDiv.appendChild(div);
                 });
                 messagesDiv.scrollTop = messagesDiv.scrollHeight;
             });
+        }
+
+        // Simple HTML escape to prevent XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         chatForm.onsubmit = async (e) => {
