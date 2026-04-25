@@ -114,9 +114,13 @@
             const filename = trigger.dataset.name || 'download';
 
             // Build a Cloudinary fl_attachment URL (forces Content-Disposition: attachment)
-            const dlUrl = url.includes('cloudinary.com')
-                ? url.replace('/upload/', '/upload/fl_attachment/')
-                : url;
+            // Note: 'raw' files don't support fl_attachment but download by default.
+            let dlUrl = url;
+            if (url.includes('cloudinary.com')) {
+                if (!url.includes('/raw/upload/')) {
+                    dlUrl = url.replace('/upload/', '/upload/fl_attachment/');
+                }
+            }
 
             // Create a hidden <a> and click it — works for raw Cloudinary URLs
             // because the browser respects the server's Content-Disposition header
