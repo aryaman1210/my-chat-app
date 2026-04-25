@@ -30,7 +30,13 @@
     <div id="chat-container" class="container hidden">
         <div class="chat-header">
             <span><span class="status-dot"></span> Global Chat</span>
-            <button id="logout-btn">Logout</button>
+            <div class="header-actions">
+                <a id="admin-link" href="admin.html" class="admin-link hidden" title="Admin Panel">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                    Admin
+                </a>
+                <button id="logout-btn">Logout</button>
+            </div>
         </div>
         <div id="messages"></div>
         <!-- Upload progress bar -->
@@ -66,7 +72,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp, doc, getDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         // ── Cloudinary config (free, no credit card) ──────────────────────────
         // 1. Sign up at cloudinary.com
@@ -183,8 +189,16 @@
         document.getElementById('signup-btn').onclick = async () => {
             const email = document.getElementById('email').value;
             const pass = document.getElementById('password').value;
-            try { await createUserWithEmailAndPassword(auth, email, pass); }
-            catch (e) { alert(e.message); }
+            try {
+                const cred = await createUserWithEmailAndPassword(auth, email, pass);
+                await setDoc(doc(db, 'users', cred.user.uid), {
+                    uid: cred.user.uid,
+                    email: cred.user.email,
+                    role: cred.user.email === 'admin@admin.com' ? 'master' : 'user',
+                    status: 'active',
+                    createdAt: serverTimestamp()
+                });
+            } catch (e) { alert(e.message); }
         };
 
         document.getElementById('login-btn').onclick = async () => {
@@ -196,18 +210,70 @@
 
         document.getElementById('logout-btn').onclick = () => signOut(auth);
 
-        // Monitor Auth State (Are we logged in or not?)
+        // Monitor Auth State
         let currentUserEmail = '';
-        onAuthStateChanged(auth, (user) => {
+        let unsubUserListener = null;
+
+        onAuthStateChanged(auth, async (user) => {
             if (user) {
+                const userRef = doc(db, 'users', user.uid);
+                let userSnap = await getDoc(userRef);
+
+                // Create record if first login (existing users)
+                if (!userSnap.exists()) {
+                    await setDoc(userRef, {
+                        uid: user.uid,
+                        email: user.email,
+                        role: user.email === 'admin@admin.com' ? 'master' : 'user',
+                        status: 'active',
+                        createdAt: serverTimestamp()
+                    });
+                    userSnap = await getDoc(userRef);
+                }
+
+                const userData = userSnap.data();
+
+                // Always keep admin@admin.com as master
+                if (user.email === 'admin@admin.com' && userData.role !== 'master') {
+                    await updateDoc(userRef, { role: 'master' });
+                }
+
+                // Block suspended users
+                if (userData.status === 'suspended') {
+                    await signOut(auth);
+                    alert('Your account has been suspended. Contact an admin.');
+                    return;
+                }
+
+                // Real-time suspension listener (kicks user if suspended mid-session)
+                if (unsubUserListener) unsubUserListener();
+                unsubUserListener = onSnapshot(userRef, async (snap) => {
+                    if (snap.exists() && snap.data().status === 'suspended') {
+                        if (unsubUserListener) unsubUserListener();
+                        await signOut(auth);
+                        alert('Your account has been suspended by an admin.');
+                    }
+                });
+
+                // Show admin link if admin/master
+                const role = userData.role;
+                const adminLink = document.getElementById('admin-link');
+                if (role === 'admin' || role === 'master') {
+                    adminLink.classList.remove('hidden');
+                } else {
+                    adminLink.classList.add('hidden');
+                }
+
                 currentUserEmail = user.email;
                 loginContainer.classList.add('hidden');
                 chatContainer.classList.remove('hidden');
                 loadMessages();
             } else {
+                if (unsubUserListener) { unsubUserListener(); unsubUserListener = null; }
                 currentUserEmail = '';
                 loginContainer.classList.remove('hidden');
                 chatContainer.classList.add('hidden');
+                document.getElementById('admin-link').classList.add('hidden');
             }
         });
 

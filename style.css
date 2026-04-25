@@ -262,6 +262,32 @@ button.secondary:hover {
     transform: translateY(-1px);
 }
 
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.admin-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.75rem;
+    background: rgba(168, 85, 247, 0.12);
+    border: 1px solid rgba(168, 85, 247, 0.3);
+    border-radius: var(--radius-sm);
+    color: var(--accent);
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background var(--transition), box-shadow var(--transition);
+}
+
+.admin-link:hover {
+    background: rgba(168, 85, 247, 0.22);
+    box-shadow: 0 2px 12px rgba(168, 85, 247, 0.2);
+}
+
 /* ===== MESSAGES AREA ===== */
 #messages {
     flex: 1;

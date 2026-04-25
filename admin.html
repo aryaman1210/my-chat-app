@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Admin Panel — Chat App</title>
+    <link rel="stylesheet" href="admin.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
+</head>
+
+<body>
+
+    <!-- ===== ADMIN LOGIN ===== -->
+    <div id="admin-login">
+        <div class="login-card">
+            <div class="login-icon">🛡️</div>
+            <h1>Admin Access</h1>
+            <p class="login-subtitle">Restricted to authorized personnel only</p>
+            <input type="email" id="admin-email" placeholder="Admin email" autocomplete="email">
+            <input type="password" id="admin-password" placeholder="Password" autocomplete="current-password">
+            <button id="admin-login-btn">Sign In to Admin</button>
+            <div id="login-error" class="error-msg hidden"></div>
+        </div>
+    </div>
+
+    <!-- ===== ADMIN DASHBOARD ===== -->
+    <div id="admin-dashboard" class="hidden">
+
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <div class="brand-shield">🛡️</div>
+                <span>Admin Panel</span>
+            </div>
+
+            <nav class="sidebar-nav">
+                <button class="nav-item active" id="nav-messages" data-section="messages">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                    Messages
+                </button>
+                <button class="nav-item" id="nav-users" data-section="users">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                    Users
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="admin-badge" id="admin-role-badge">ADMIN</div>
+                <div class="admin-email-display" id="current-admin-email">—</div>
+                <button class="btn-logout" id="admin-logout-btn">Logout</button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+
+            <!-- ── MESSAGES SECTION ── -->
+            <section id="section-messages">
+                <div class="section-header">
+                    <div>
+                        <h1>Message Management</h1>
+                        <p>View and moderate all chat messages in real-time</p>
+                    </div>
+                    <button class="btn btn-danger" id="clear-all-btn">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14H6L5 6"></path><path d="M10 11v6M14 11v6"></path><path d="M9 6V4h6v2"></path></svg>
+                        Clear All History
+                    </button>
+                </div>
+
+                <div class="stats-row">
+                    <div class="stat-card">
+                        <div class="stat-value" id="total-msgs">—</div>
+                        <div class="stat-label">Total Messages</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="total-attachments">—</div>
+                        <div class="stat-label">With Attachments</div>
+                    </div>
+                </div>
+
+                <div id="messages-list" class="msg-list">
+                    <div class="empty"><div class="empty-icon">💬</div>Loading messages…</div>
+                </div>
+            </section>
+
+            <!-- ── USERS SECTION ── -->
+            <section id="section-users" class="hidden">
+                <div class="section-header">
+                    <div>
+                        <h1>User Management</h1>
+                        <p>Manage accounts, roles, and permissions</p>
+                    </div>
+                </div>
+
+                <div class="stats-row">
+                    <div class="stat-card">
+                        <div class="stat-value" id="total-users">—</div>
+                        <div class="stat-label">Total Users</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="total-admins">—</div>
+                        <div class="stat-label">Admins</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="total-suspended">—</div>
+                        <div class="stat-label">Suspended</div>
+                    </div>
+                </div>
+
+                <div class="table-wrap">
+                    <table class="users-table">
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-tbody">
+                            <tr><td colspan="4" class="empty">Loading users…</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- ===== CONFIRM DIALOG (reusable) ===== -->
+    <div id="confirm-overlay" class="overlay hidden">
+        <div class="dialog">
+            <h3 id="dialog-title">Are you sure?</h3>
+            <p id="dialog-body">This action cannot be undone.</p>
+            <div class="dialog-actions">
+                <button class="btn btn-ghost" id="dialog-cancel">Cancel</button>
+                <button class="btn btn-danger" id="dialog-confirm">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== FIREBASE ===== -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import {
+            getFirestore, collection, doc, getDocs, getDoc,
+            deleteDoc, updateDoc, onSnapshot,
+            query, orderBy, writeBatch
+        } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        // ── Firebase config ──────────────────────────────────────────────────
+        const firebaseConfig = {
+            apiKey: "AIzaSyDmbn5MZ0wFsFo_zpZiaL878CxTqMgRN5c",
+            authDomain: "mychatapp-3ca8c.firebaseapp.com",
+            projectId: "mychatapp-3ca8c",
+            storageBucket: "mychatapp-3ca8c.firebasestorage.app",
+            messagingSenderId: "502281358029",
+            appId: "1:502281358029:web:38f200a0e7c754cd41f784"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        const MASTER_EMAIL = 'admin@admin.com';
+
+        // ── UI refs ───────────────────────────────────────────────────────────
+        const adminLogin     = document.getElementById('admin-login');
+        const adminDashboard = document.getElementById('admin-dashboard');
+        const loginError     = document.getElementById('login-error');
+        const currentAdminEl = document.getElementById('current-admin-email');
+        const adminRoleBadge = document.getElementById('admin-role-badge');
+
+        // Sections
+        const sectionMessages = document.getElementById('section-messages');
+        const sectionUsers    = document.getElementById('section-users');
+        const navMessages     = document.getElementById('nav-messages');
+        const navUsers        = document.getElementById('nav-users');
+
+        // ── Confirm dialog ────────────────────────────────────────────────────
+        function showConfirm(title, body, confirmLabel = 'Confirm', confirmClass = 'btn-danger') {
+            return new Promise((resolve) => {
+                const overlay  = document.getElementById('confirm-overlay');
+                const titleEl  = document.getElementById('dialog-title');
+                const bodyEl   = document.getElementById('dialog-body');
+                const btnOk    = document.getElementById('dialog-confirm');
+                const btnCancel = document.getElementById('dialog-cancel');
+
+                titleEl.textContent = title;
+                bodyEl.textContent  = body;
+                btnOk.className     = `btn ${confirmClass}`;
+                btnOk.textContent   = confirmLabel;
+
+                overlay.classList.remove('hidden');
+
+                const cleanup = () => overlay.classList.add('hidden');
+
+                btnOk.onclick = () => { cleanup(); resolve(true); };
+                btnCancel.onclick = () => { cleanup(); resolve(false); };
+                overlay.onclick = (e) => { if (e.target === overlay) { cleanup(); resolve(false); } };
+            });
+        }
+
+        // ── Auth ──────────────────────────────────────────────────────────────
+        document.getElementById('admin-login-btn').onclick = async () => {
+            const email = document.getElementById('admin-email').value.trim();
+            const pass  = document.getElementById('admin-password').value;
+            loginError.classList.add('hidden');
+
+            try {
+                await signInWithEmailAndPassword(auth, email, pass);
+            } catch (e) {
+                loginError.textContent = e.message;
+                loginError.classList.remove('hidden');
+            }
+        };
+
+        document.getElementById('admin-password').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') document.getElementById('admin-login-btn').click();
+        });
+
+        document.getElementById('admin-logout-btn').onclick = () => signOut(auth);
+
+        // ── Auth state ────────────────────────────────────────────────────────
+        let currentAdminRole = '';
+        let unsubMessages = null;
+        let unsubUsers = null;
+
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                // Check admin role in Firestore
+                const userSnap = await getDoc(doc(db, 'users', user.uid));
+                if (!userSnap.exists()) {
+                    await signOut(auth);
+                    showLoginError('No account record found. Please log in from the chat app first.');
+                    return;
+                }
+
+                const role = userSnap.data().role;
+                if (role !== 'admin' && role !== 'master') {
+                    await signOut(auth);
+                    showLoginError('Access denied. You do not have admin privileges.');
+                    return;
+                }
+
+                currentAdminRole = role;
+                currentAdminEl.textContent = user.email;
+                adminRoleBadge.textContent = role === 'master' ? 'MASTER' : 'ADMIN';
+                adminRoleBadge.className   = role === 'master' ? 'admin-badge badge-master-pill' : 'admin-badge';
+
+                adminLogin.classList.add('hidden');
+                adminDashboard.classList.remove('hidden');
+
+                startListeners(user);
+            } else {
+                currentAdminRole = '';
+                adminLogin.classList.remove('hidden');
+                adminDashboard.classList.add('hidden');
+                stopListeners();
+            }
+        });
+
+        function showLoginError(msg) {
+            loginError.textContent = msg;
+            loginError.classList.remove('hidden');
+        }
+
+        // ── Realtime listeners ────────────────────────────────────────────────
+        function startListeners(user) {
+            listenMessages();
+            listenUsers(user);
+        }
+
+        function stopListeners() {
+            if (unsubMessages) { unsubMessages(); unsubMessages = null; }
+            if (unsubUsers)    { unsubUsers();    unsubUsers = null; }
+        }
+
+        // ── Navigation ────────────────────────────────────────────────────────
+        navMessages.onclick = () => switchSection('messages');
+        navUsers.onclick    = () => switchSection('users');
+
+        function switchSection(name) {
+            sectionMessages.classList.toggle('hidden', name !== 'messages');
+            sectionUsers.classList.toggle('hidden', name !== 'users');
+            navMessages.classList.toggle('active', name === 'messages');
+            navUsers.classList.toggle('active', name === 'users');
+        }
+
+        // ════════════════════════════════════════════════════════════
+        //  MESSAGES
+        // ════════════════════════════════════════════════════════════
+
+        function listenMessages() {
+            const q = query(collection(db, 'messages'), orderBy('createdAt', 'desc'));
+            unsubMessages = onSnapshot(q, (snap) => {
+                const msgs = snap.docs;
+                document.getElementById('total-msgs').textContent = msgs.length;
+                document.getElementById('total-attachments').textContent =
+                    msgs.filter(d => d.data().attachmentUrl).length;
+                renderMessages(msgs);
+            });
+        }
+
+        function renderMessages(docs) {
+            const list = document.getElementById('messages-list');
+            if (docs.length === 0) {
+                list.innerHTML = '<div class="empty"><div class="empty-icon">💬</div>No messages yet.</div>';
+                return;
+            }
+
+            list.innerHTML = '';
+            docs.forEach(msgDoc => {
+                const msg  = msgDoc.data();
+                const id   = msgDoc.id;
+                const initial = msg.user ? msg.user[0].toUpperCase() : '?';
+                const time = msg.createdAt?.toDate
+                    ? msg.createdAt.toDate().toLocaleString()
+                    : 'Just now';
+
+                let contentHtml = '';
+                if (msg.text) {
+                    contentHtml += `<div class="msg-content">${escHtml(msg.text)}</div>`;
+                }
+                if (msg.attachmentUrl) {
+                    const label = msg.attachmentType === 'image' ? '🖼 Image'
+                                : msg.attachmentType === 'video' ? '🎥 Video'
+                                : '📄 File';
+                    contentHtml += `<span class="attachment-badge">${label}: ${escHtml(msg.attachmentName || 'attachment')}</span>`;
+                }
+
+                const row = document.createElement('div');
+                row.className = 'msg-row';
+                row.innerHTML = `
+                    <div class="msg-avatar">${initial}</div>
+                    <div class="msg-body">
+                        <div class="msg-meta">
+                            <span class="msg-author">${escHtml(msg.user || 'unknown')}</span>
+                            <span class="msg-time">${time}</span>
+                        </div>
+                        ${contentHtml}
+                    </div>
+                    <div class="msg-actions">
+                        <button class="btn btn-danger del-msg-btn" data-id="${id}">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14H6L5 6"></path></svg>
+                            Delete
+                        </button>
+                    </div>
+                `;
+                list.appendChild(row);
+            });
+
+            // Delete single message
+            list.querySelectorAll('.del-msg-btn').forEach(btn => {
+                btn.onclick = async () => {
+                    const ok = await showConfirm('Delete message?', 'This message will be permanently removed.');
+                    if (ok) {
+                        await deleteDoc(doc(db, 'messages', btn.dataset.id));
+                    }
+                };
+            });
+        }
+
+        // Clear all messages
+        document.getElementById('clear-all-btn').onclick = async () => {
+            const ok = await showConfirm(
+                'Clear all messages?',
+                'This will permanently delete the entire chat history. This cannot be undone.',
+                'Yes, clear all'
+            );
+            if (!ok) return;
+
+            const snap = await getDocs(collection(db, 'messages'));
+            // Firestore batch max 500 ops
+            const chunks = [];
+            for (let i = 0; i < snap.docs.length; i += 499) {
+                chunks.push(snap.docs.slice(i, i + 499));
+            }
+            for (const chunk of chunks) {
+                const batch = writeBatch(db);
+                chunk.forEach(d => batch.delete(d.ref));
+                await batch.commit();
+            }
+        };
+
+        // ════════════════════════════════════════════════════════════
+        //  USERS
+        // ════════════════════════════════════════════════════════════
+
+        function listenUsers(currentUser) {
+            unsubUsers = onSnapshot(collection(db, 'users'), (snap) => {
+                const users = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+                document.getElementById('total-users').textContent     = users.length;
+                document.getElementById('total-admins').textContent    = users.filter(u => u.role === 'admin' || u.role === 'master').length;
+                document.getElementById('total-suspended').textContent = users.filter(u => u.status === 'suspended').length;
+
+                renderUsers(users, currentUser);
+            });
+        }
+
+        function renderUsers(users, currentUser) {
+            const tbody = document.getElementById('users-tbody');
+            if (users.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="empty">No users found.</td></tr>';
+                return;
+            }
+
+            // Sort: master first, then admins, then users
+            const order = { master: 0, admin: 1, user: 2 };
+            users.sort((a, b) => (order[a.role] ?? 3) - (order[b.role] ?? 3));
+
+            tbody.innerHTML = '';
+            users.forEach(user => {
+                const isMaster        = user.role === 'master';
+                const isCurrentAdmin  = user.uid === currentUser.uid;
+                const isSelf          = isCurrentAdmin;
+                const targetIsAdmin   = user.role === 'admin' || user.role === 'master';
+                const canActOnTarget  = !isMaster; // nobody can touch master
+
+                // Non-master admins cannot act on other admins
+                const canModify = canActOnTarget && (currentAdminRole === 'master' || !targetIsAdmin);
+
+                const roleBadge = isMaster
+                    ? '<span class="badge badge-master">Master</span>'
+                    : user.role === 'admin'
+                    ? '<span class="badge badge-admin">Admin</span>'
+                    : '<span class="badge badge-user">User</span>';
+
+                const statusBadge = user.status === 'suspended'
+                    ? '<span class="badge badge-suspended">Suspended</span>'
+                    : '<span class="badge badge-active">Active</span>';
+
+                // Action buttons
+                let actions = '';
+
+                if (isMaster) {
+                    actions = '<span style="color:var(--text-muted);font-size:0.78rem;">Protected</span>';
+                } else {
+                    // Suspend / Unsuspend
+                    if (user.status === 'suspended') {
+                        actions += `<button class="btn btn-success action-unsuspend" data-uid="${user.id}" ${canModify ? '' : 'disabled'}>Unsuspend</button>`;
+                    } else {
+                        actions += `<button class="btn btn-warn action-suspend" data-uid="${user.id}" ${(canModify && !isSelf) ? '' : 'disabled'} title="${isSelf ? 'Cannot suspend yourself' : ''}">Suspend</button>`;
+                    }
+
+                    // Delete
+                    actions += `<button class="btn btn-danger action-delete" data-uid="${user.id}" data-email="${escHtml(user.email)}" ${(canModify && !isSelf) ? '' : 'disabled'} title="${isSelf ? 'Cannot delete yourself' : ''}">Delete</button>`;
+
+                    // Promote / Demote
+                    if (user.role === 'user') {
+                        actions += `<button class="btn btn-purple action-promote" data-uid="${user.id}">Make Admin</button>`;
+                    } else if (user.role === 'admin') {
+                        // Only master can demote another admin
+                        const canDemote = currentAdminRole === 'master' && !isSelf;
+                        actions += `<button class="btn btn-ghost action-demote" data-uid="${user.id}" ${canDemote ? '' : 'disabled'} title="${!canDemote ? 'Only master can demote admins' : ''}">Remove Admin</button>`;
+                    }
+                }
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>
+                        <div class="user-email">${escHtml(user.email || '—')}</div>
+                        <div class="user-uid">${user.uid}</div>
+                    </td>
+                    <td>${roleBadge}</td>
+                    <td>${statusBadge}</td>
+                    <td><div class="td-actions">${actions}</div></td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // Bind actions
+            tbody.querySelectorAll('.action-suspend').forEach(btn => {
+                btn.onclick = async () => {
+                    const ok = await showConfirm('Suspend user?', 'They will be signed out and blocked from the chat until unsuspended.', 'Suspend', 'btn-warn');
+                    if (ok) await updateDoc(doc(db, 'users', btn.dataset.uid), { status: 'suspended' });
+                };
+            });
+
+            tbody.querySelectorAll('.action-unsuspend').forEach(btn => {
+                btn.onclick = async () => {
+                    await updateDoc(doc(db, 'users', btn.dataset.uid), { status: 'active' });
+                };
+            });
+
+            tbody.querySelectorAll('.action-delete').forEach(btn => {
+                btn.onclick = async () => {
+                    const ok = await showConfirm(
+                        'Delete user?',
+                        `This will mark ${btn.dataset.email}'s account as deleted and block all access. Their Firebase Auth account will remain but they will be permanently blocked.`,
+                        'Delete',
+                        'btn-danger'
+                    );
+                    if (ok) await updateDoc(doc(db, 'users', btn.dataset.uid), { status: 'suspended', deleted: true });
+                };
+            });
+
+            tbody.querySelectorAll('.action-promote').forEach(btn => {
+                btn.onclick = async () => {
+                    const ok = await showConfirm('Make admin?', 'This user will gain full admin panel access.', 'Make Admin', 'btn-purple');
+                    if (ok) await updateDoc(doc(db, 'users', btn.dataset.uid), { role: 'admin' });
+                };
+            });
+
+            tbody.querySelectorAll('.action-demote').forEach(btn => {
+                btn.onclick = async () => {
+                    const ok = await showConfirm('Remove admin?', 'This user will lose admin panel access and revert to a regular user.', 'Remove Admin', 'btn-warn');
+                    if (ok) await updateDoc(doc(db, 'users', btn.dataset.uid), { role: 'user' });
+                };
+            });
+        }
+
+        // ── Util ──────────────────────────────────────────────────────────────
+        function escHtml(str) {
+            const d = document.createElement('div');
+            d.textContent = str ?? '';
+            return d.innerHTML;
+        }
+    </script>
+</body>
+
+</html>
