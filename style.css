@@ -551,6 +551,26 @@ button.secondary:hover {
     transition: background var(--transition);
 }
 
+.msg-file span {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.msg-file-name {
+    font-size: 0.8rem;
+    font-weight: 500;
+    word-break: break-all;
+}
+
+.msg-file-ext {
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: var(--accent);
+    opacity: 0.8;
+}
+
 .msg-file:hover {
     background: rgba(255, 255, 255, 0.14);
 }
