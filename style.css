@@ -575,6 +575,12 @@ button.secondary:hover {
     background: rgba(255, 255, 255, 0.14);
 }
 
+.msg-file.downloading {
+    opacity: 0.6;
+    pointer-events: none;
+    animation: pulse-dot 1s ease-in-out infinite;
+}
+
 .msg-self .msg-file {
     background: rgba(255, 255, 255, 0.15);
     border-color: rgba(255, 255, 255, 0.2);
