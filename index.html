@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Realtime Chat</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <!-- LOGIN SECTION -->
+    <div id="login-container" class="container">
+        <h2>Chat Login</h2>
+        <input type="email" id="email" placeholder="Email">
+        <input type="password" id="password" placeholder="Password">
+        <div class="btn-group">
+            <button id="login-btn">Login</button>
+            <button id="signup-btn" class="secondary">Sign Up</button>
+        </div>
+    </div>
+
+    <!-- CHAT SECTION (Hidden by default) -->
+    <div id="chat-container" class="container hidden">
+        <div class="chat-header">
+            <span>Global Chat</span>
+            <button id="logout-btn">Logout</button>
+        </div>
+        <div id="messages"></div>
+        <form id="chat-form">
+            <input type="text" id="msg-input" placeholder="Type a message..." autocomplete="off">
+            <button type="submit">Send</button>
+        </form>
+    </div>
+
+    <!-- FIREBASE SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        // 1. PASTE YOUR FIREBASE CONFIG HERE
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // UI Elements
+        const loginContainer = document.getElementById('login-container');
+        const chatContainer = document.getElementById('chat-container');
+        const messagesDiv = document.getElementById('messages');
+        const chatForm = document.getElementById('chat-form');
+        const msgInput = document.getElementById('msg-input');
+
+        // --- AUTHENTICATION ---
+        document.getElementById('signup-btn').onclick = async () => {
+            const email = document.getElementById('email').value;
+            const pass = document.getElementById('password').value;
+            try { await createUserWithEmailAndPassword(auth, email, pass); }
+            catch (e) { alert(e.message); }
+        };
+
+        document.getElementById('login-btn').onclick = async () => {
+            const email = document.getElementById('email').value;
+            const pass = document.getElementById('password').value;
+            try { await signInWithEmailAndPassword(auth, email, pass); }
+            catch (e) { alert(e.message); }
+        };
+
+        document.getElementById('logout-btn').onclick = () => signOut(auth);
+
+        // Monitor Auth State (Are we logged in or not?)
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                loginContainer.classList.add('hidden');
+                chatContainer.classList.remove('hidden');
+                loadMessages();
+            } else {
+                loginContainer.classList.remove('hidden');
+                chatContainer.classList.add('hidden');
+            }
+        });
+
+        // --- CHAT LOGIC ---
+        async function loadMessages() {
+            // Query: messages collection, ordered by time, limit to last 200
+            const q = query(collection(db, "messages"), orderBy("createdAt", "desc"), limit(200));
+
+            // onSnapshot = Real-time listener (Minimal lag!)
+            onSnapshot(q, (snapshot) => {
+                messagesDiv.innerHTML = '';
+                // Reverse because we queried "desc"
+                const msgs = snapshot.docs.map(doc => doc.data()).reverse();
+
+                msgs.forEach(msg => {
+                    const div = document.createElement('div');
+                    div.classList.add('msg');
+                    div.innerHTML = `<b>${msg.user}</b>: ${msg.text}`;
+                    messagesDiv.appendChild(div);
+                });
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            });
+        }
+
+        chatForm.onsubmit = async (e) => {
+            e.preventDefault();
+            if (msgInput.value.trim() === '') return;
+
+            await addDoc(collection(db, "messages"), {
+                text: msgInput.value,
+                user: auth.currentUser.email,
+                createdAt: serverTimestamp()
+            });
+            msgInput.value = '';
+        };
+    </script>
+</body>
+
+</html>
