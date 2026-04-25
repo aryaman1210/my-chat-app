@@ -102,8 +102,10 @@
         const chatContainer = document.getElementById('chat-container');
         const messagesDiv = document.getElementById('messages');
 
-        // ── File download handler (fetch→blob so cross-origin download works) ──
-        messagesDiv.addEventListener('click', async (e) => {
+        // ── File download handler ────────────────────────────────────────────
+        // Uses a hidden <a> tag with fl_attachment to force download without
+        // CORS issues or the browser's inline PDF viewer interfering.
+        messagesDiv.addEventListener('click', (e) => {
             const trigger = e.target.closest('.dl-trigger');
             if (!trigger) return;
             e.preventDefault();
@@ -111,30 +113,20 @@
             const url      = trigger.dataset.url;
             const filename = trigger.dataset.name || 'download';
 
-            // Visual feedback
-            trigger.classList.add('downloading');
-            trigger.querySelector('.msg-file-ext').textContent = '…';
+            // Build a Cloudinary fl_attachment URL (forces Content-Disposition: attachment)
+            const dlUrl = url.includes('cloudinary.com')
+                ? url.replace('/upload/', '/upload/fl_attachment/')
+                : url;
 
-            try {
-                const res  = await fetch(url, { mode: 'cors' });
-                const blob = await res.blob();
-                const blobUrl = URL.createObjectURL(blob);
-
-                const a = document.createElement('a');
-                a.href     = blobUrl;
-                a.download = filename;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
-            } catch {
-                // CORS fallback: open in new tab
-                window.open(url, '_blank');
-            } finally {
-                trigger.classList.remove('downloading');
-                const ext = filename.split('.').pop().toUpperCase();
-                trigger.querySelector('.msg-file-ext').textContent = ext;
-            }
+            // Create a hidden <a> and click it — works for raw Cloudinary URLs
+            // because the browser respects the server's Content-Disposition header
+            const a = document.createElement('a');
+            a.href   = dlUrl;
+            a.target = '_blank';
+            a.rel    = 'noopener noreferrer';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
         });
         const chatForm = document.getElementById('chat-form');
         const msgInput = document.getElementById('msg-input');
@@ -170,10 +162,16 @@
                 formData.append('file', file);
                 formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
 
+                // Use 'raw' resource type for documents (PDF, ZIP, etc.) so
+                // Cloudinary stores them as downloadable raw files, not images
+                const isImage = file.type.startsWith('image/');
+                const isVideo = file.type.startsWith('video/');
+                const resourceType = (isImage || isVideo) ? 'auto' : 'raw';
+
                 // Use XMLHttpRequest so we can track real upload progress
-                const downloadURL = await new Promise((resolve, reject) => {
+                const uploadResult = await new Promise((resolve, reject) => {
                     const xhr = new XMLHttpRequest();
-                    xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`);
+                    xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`);
 
                     xhr.upload.onprogress = (e) => {
                         if (e.lengthComputable) {
@@ -186,7 +184,7 @@
                     xhr.onload = () => {
                         if (xhr.status === 200) {
                             const res = JSON.parse(xhr.responseText);
-                            resolve(res.secure_url);
+                            resolve({ url: res.secure_url, resourceType });
                         } else {
                             reject(new Error('Upload failed — check your Cloud name & preset.'));
                         }
@@ -196,8 +194,7 @@
                     xhr.send(formData);
                 });
 
-                const isImage = file.type.startsWith('image/');
-                const isVideo = file.type.startsWith('video/');
+                const downloadURL = uploadResult.url;
                 let attachmentType = 'file';
                 if (isImage) attachmentType = 'image';
                 else if (isVideo) attachmentType = 'video';
