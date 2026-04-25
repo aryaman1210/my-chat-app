@@ -7,7 +7,8 @@
     <meta name="description" content="A sleek, real-time chat application with secure authentication.">
     <title>Realtime Chat</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💬</text></svg>">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💬</text></svg>">
 </head>
 
 <body>
@@ -32,10 +33,28 @@
             <button id="logout-btn">Logout</button>
         </div>
         <div id="messages"></div>
+        <!-- Upload progress bar -->
+        <div id="upload-progress-wrap" class="hidden">
+            <div id="upload-progress-bar"></div>
+            <span id="upload-progress-label">Uploading…</span>
+        </div>
+
         <form id="chat-form">
+            <!-- Hidden file input -->
+            <input type="file" id="file-input" accept="image/*,video/*,.pdf,.doc,.docx,.txt,.zip" style="display:none">
+            <!-- Paperclip button -->
+            <button type="button" id="attach-btn" aria-label="Attach file" class="icon-btn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path
+                        d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48">
+                    </path>
+                </svg>
+            </button>
             <input type="text" id="msg-input" placeholder="Type a message..." autocomplete="off">
             <button type="submit" aria-label="Send message">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                    stroke-linecap="round" stroke-linejoin="round">
                     <line x1="22" y1="2" x2="11" y2="13"></line>
                     <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
                 </svg>
@@ -48,6 +67,14 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        // ── Cloudinary config (free, no credit card) ──────────────────────────
+        // 1. Sign up at cloudinary.com
+        // 2. Settings → Upload → Upload Presets → Add preset → set Unsigned
+        // 3. Replace the two values below
+        const CLOUDINARY_CLOUD_NAME = 'dvttuyahf';   // e.g. 'dxyz123'
+        const CLOUDINARY_UPLOAD_PRESET = 'chatapp';    // e.g. 'chat_uploads'
+        // ─────────────────────────────────────────────────────────────────────
 
         // 1. PASTE YOUR FIREBASE CONFIG HERE
         const firebaseConfig = {
@@ -70,6 +97,87 @@
         const messagesDiv = document.getElementById('messages');
         const chatForm = document.getElementById('chat-form');
         const msgInput = document.getElementById('msg-input');
+        const fileInput = document.getElementById('file-input');
+        const attachBtn = document.getElementById('attach-btn');
+        const uploadProgressWrap = document.getElementById('upload-progress-wrap');
+        const uploadProgressBar = document.getElementById('upload-progress-bar');
+        const uploadProgressLabel = document.getElementById('upload-progress-label');
+
+        // Open file picker when paperclip is clicked
+        attachBtn.onclick = () => fileInput.click();
+
+        // When a file is selected, send it immediately
+        fileInput.onchange = () => {
+            const file = fileInput.files[0];
+            if (!file) return;
+            if (file.size > 10 * 1024 * 1024) {
+                alert('File too large. Max size is 10 MB.');
+                fileInput.value = '';
+                return;
+            }
+            uploadAndSend(file);
+        };
+
+        async function uploadAndSend(file) {
+            // Show progress bar
+            uploadProgressWrap.classList.remove('hidden');
+            uploadProgressBar.style.width = '5%';
+            uploadProgressLabel.textContent = 'Uploading…';
+
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+
+                // Use XMLHttpRequest so we can track real upload progress
+                const downloadURL = await new Promise((resolve, reject) => {
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`);
+
+                    xhr.upload.onprogress = (e) => {
+                        if (e.lengthComputable) {
+                            const pct = Math.round((e.loaded / e.total) * 100);
+                            uploadProgressBar.style.width = pct + '%';
+                            uploadProgressLabel.textContent = `Uploading… ${pct}%`;
+                        }
+                    };
+
+                    xhr.onload = () => {
+                        if (xhr.status === 200) {
+                            const res = JSON.parse(xhr.responseText);
+                            resolve(res.secure_url);
+                        } else {
+                            reject(new Error('Upload failed — check your Cloud name & preset.'));
+                        }
+                    };
+
+                    xhr.onerror = () => reject(new Error('Network error during upload.'));
+                    xhr.send(formData);
+                });
+
+                const isImage = file.type.startsWith('image/');
+                const isVideo = file.type.startsWith('video/');
+                let attachmentType = 'file';
+                if (isImage) attachmentType = 'image';
+                else if (isVideo) attachmentType = 'video';
+
+                await addDoc(collection(db, 'messages'), {
+                    text: msgInput.value.trim() || '',
+                    user: auth.currentUser.email,
+                    createdAt: serverTimestamp(),
+                    attachmentUrl: downloadURL,
+                    attachmentType,
+                    attachmentName: file.name
+                });
+
+                msgInput.value = '';
+            } catch (err) {
+                alert(err.message);
+            } finally {
+                uploadProgressWrap.classList.add('hidden');
+                fileInput.value = '';
+            }
+        }
 
         // --- AUTHENTICATION ---
         document.getElementById('signup-btn').onclick = async () => {
@@ -133,9 +241,29 @@
 
                     const authorName = msg.user ? msg.user.split('@')[0] : 'anon';
 
+                    // Build attachment HTML
+                    let attachmentHtml = '';
+                    if (msg.attachmentUrl) {
+                        if (msg.attachmentType === 'image') {
+                            attachmentHtml = `<a href="${msg.attachmentUrl}" target="_blank" rel="noopener">
+                                <img class="msg-image" src="${msg.attachmentUrl}" alt="${escapeHtml(msg.attachmentName || 'image')}" loading="lazy">
+                            </a>`;
+                        } else if (msg.attachmentType === 'video') {
+                            attachmentHtml = `<video class="msg-video" controls>
+                                <source src="${msg.attachmentUrl}">
+                            </video>`;
+                        } else {
+                            attachmentHtml = `<a class="msg-file" href="${msg.attachmentUrl}" target="_blank" rel="noopener" download>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                                ${escapeHtml(msg.attachmentName || 'Download file')}
+                            </a>`;
+                        }
+                    }
+
                     div.innerHTML = `
                         <span class="msg-author">${isSelf ? 'You' : authorName}</span>
-                        <span class="msg-text">${escapeHtml(msg.text)}</span>
+                        ${attachmentHtml}
+                        ${msg.text ? `<span class="msg-text">${escapeHtml(msg.text)}</span>` : ''}
                     `;
                     messagesDiv.appendChild(div);
                 });
@@ -152,10 +280,11 @@
 
         chatForm.onsubmit = async (e) => {
             e.preventDefault();
-            if (msgInput.value.trim() === '') return;
+            const text = msgInput.value.trim();
+            if (!text) return;
 
             await addDoc(collection(db, "messages"), {
-                text: msgInput.value,
+                text,
                 user: auth.currentUser.email,
                 createdAt: serverTimestamp()
             });

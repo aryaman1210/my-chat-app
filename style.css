@@ -2,7 +2,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 /* ===== RESET & BASE ===== */
-*, *::before, *::after {
+*,
+*::before,
+*::after {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
@@ -165,7 +167,7 @@ button::after {
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), transparent);
     opacity: 0;
     transition: opacity var(--transition);
 }
@@ -403,6 +405,7 @@ button.secondary:hover {
         opacity: 0;
         transform: translateY(16px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -414,6 +417,7 @@ button.secondary:hover {
         opacity: 0;
         transform: translateY(8px) scale(0.97);
     }
+
     to {
         opacity: 1;
         transform: translateY(0) scale(1);
@@ -421,8 +425,113 @@ button.secondary:hover {
 }
 
 @keyframes pulse-dot {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.4; }
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.4;
+    }
+}
+
+/* ===== ATTACH BUTTON ===== */
+.icon-btn {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    padding: 0;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-glass);
+    border: 1px solid var(--border-input);
+    color: var(--text-secondary);
+}
+
+.icon-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: var(--accent);
+    color: var(--accent);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+/* ===== UPLOAD PROGRESS BAR ===== */
+#upload-progress-wrap {
+    margin: 0 1.25rem 0.5rem;
+    background: var(--bg-glass);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    padding: 0.5rem 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    animation: fadeSlideUp 0.2s ease-out;
+}
+
+#upload-progress-bar {
+    height: 4px;
+    background: linear-gradient(90deg, #6c5ce7, #a855f7);
+    border-radius: 4px;
+    width: 0%;
+    transition: width 0.3s ease;
+}
+
+#upload-progress-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+/* ===== ATTACHMENT DISPLAY ===== */
+.msg-image {
+    display: block;
+    max-width: 100%;
+    max-height: 280px;
+    border-radius: var(--radius-sm);
+    margin-top: 0.4rem;
+    object-fit: cover;
+    cursor: pointer;
+    transition: opacity var(--transition);
+}
+
+.msg-image:hover {
+    opacity: 0.9;
+}
+
+.msg-video {
+    display: block;
+    max-width: 100%;
+    max-height: 280px;
+    border-radius: var(--radius-sm);
+    margin-top: 0.4rem;
+    background: #000;
+}
+
+.msg-file {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.4rem;
+    padding: 0.5rem 0.75rem;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border-input);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    text-decoration: none;
+    font-size: 0.8rem;
+    word-break: break-all;
+    transition: background var(--transition);
+}
+
+.msg-file:hover {
+    background: rgba(255, 255, 255, 0.14);
+}
+
+.msg-self .msg-file {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.2);
 }
 
 /* ===== RESPONSIVE ===== */
